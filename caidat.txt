@@ -1,0 +1,4 @@
+py -m venv venv
+venv\Scripts\activate
+______________________________
+pip install -r requirements.txt

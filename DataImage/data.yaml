@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 9
+names: ['A', 'B', 'C', 'D', 'E', 'G', 'H', 'I', 'L']
+
+roboflow:
+  workspace: fpt-oeq8a
+  project: vsl-1slfz
+  version: 20
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/fpt-oeq8a/vsl-1slfz/dataset/20

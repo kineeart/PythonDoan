@@ -1,0 +1,36 @@
+# --- Virtual environments ---
+venv/
+ENV/
+env/
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Jupyter Notebook checkpoints ---
+.ipynb_checkpoints/
+
+# --- Model files (rất nặng) ---
+Models/checkpoints/
+*.keras
+*.h5
+*.ckpt
+*.weights
+*.pb
+
+# --- DLL / binary files ---
+*.dll
+*.so
+*.dylib
+
+# --- Logs ---
+*.log
+
+# --- OS generated files ---
+.DS_Store
+Thumbs.db
+
+# --- ChromeDriver (không cần push nếu tự cài) ---
+chromedriver-win64/
