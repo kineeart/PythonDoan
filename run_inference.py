@@ -125,7 +125,7 @@ def run_webcam(cam_index=0):
         return
 
     buffer = [] # Chứa 60 frame gần nhất
-    last_text = ""
+    last_text = "Trong" # Mặc định là trống
     
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
         while True:
@@ -135,25 +135,28 @@ def run_webcam(cam_index=0):
             # 1. Xử lý frame
             kps, vis_frame = preprocess_frame(frame, holistic)
             
-            # 2. Cập nhật buffer
-            buffer.append(kps)
-            if len(buffer) > SEQ_LEN:
-                buffer.pop(0)
+            # --- KIỂM TRA CÓ TAY KHÔNG ---
+            # Nếu tổng giá trị tuyệt đối của keypoints bằng 0 nghĩa là không có tay
+            if np.max(np.abs(kps)) == 0:
+                last_text = "Trong" # Hiển thị "Trong" (Trống)
+                buffer = [] # Reset buffer để ngắt chuỗi hành động
+            else:
+                # 2. Cập nhật buffer nếu có tay
+                buffer.append(kps)
+                if len(buffer) > SEQ_LEN:
+                    buffer.pop(0)
 
-            # 3. Dự đoán khi đủ dữ liệu
-            if len(buffer) == SEQ_LEN:
-                seq = np.array(buffer, dtype=np.float32) # (60, 201)
-                
-                # Nếu model có layer Normalization chưa được build trong load_model (hiếm gặp), 
-                # ta có thể gọi thủ công, nhưng thường model.predict tự lo.
-                
-                cls_idx, prob = predict_sequence(model, seq)
-                
-                if prob > CONFIDENCE_THRESHOLD:
-                    label_name = LABEL_MAP.get(cls_idx, "Unknown")
-                    last_text = f"{label_name} ({prob:.0%})"
-                else:
-                    last_text = "..."
+                # 3. Dự đoán khi đủ dữ liệu
+                if len(buffer) == SEQ_LEN:
+                    seq = np.array(buffer, dtype=np.float32) # (60, 201)
+                    
+                    cls_idx, prob = predict_sequence(model, seq)
+                    
+                    if prob > CONFIDENCE_THRESHOLD:
+                        label_name = LABEL_MAP.get(cls_idx, "Unknown")
+                        last_text = f"{label_name} ({prob:.0%})"
+                    else:
+                        last_text = "..."
 
             # 4. Hiển thị
             # Vẽ nền đen cho chữ dễ đọc
@@ -191,18 +194,26 @@ def run_video(video_path):
             if not ret:
                 break
             kps, vis = preprocess_frame(frame, holistic)
-            buffer.append(kps.astype(np.float32))
-            if len(buffer) > SEQ_LEN:
-                buffer.pop(0)
-            if len(buffer) == SEQ_LEN:
-                seq = np.stack(buffer, axis=0)
-                if norm_layer is not None:
-                    seq = norm_layer(seq[None, ...]).numpy()[0]
-                cls, prob = predict_sequence(model, seq)
-                last_pred, last_prob = cls, prob
-            if last_pred is not None:
-                text = f"{LABEL_MAP[last_pred]} ({last_prob:.2f})"
-                cv2.putText(vis, text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), 2)
+            
+            # Kiểm tra có tay không
+            if np.max(np.abs(kps)) == 0:
+                cv2.putText(vis, "Trong", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 2)
+                buffer = [] # Reset buffer
+            else:
+                buffer.append(kps.astype(np.float32))
+                if len(buffer) > SEQ_LEN:
+                    buffer.pop(0)
+                if len(buffer) == SEQ_LEN:
+                    seq = np.stack(buffer, axis=0)
+                    if norm_layer is not None:
+                        seq = norm_layer(seq[None, ...]).numpy()[0]
+                    cls, prob = predict_sequence(model, seq)
+                    last_pred, last_prob = cls, prob
+                
+                if last_pred is not None:
+                    text = f"{LABEL_MAP[last_pred]} ({last_prob:.2f})"
+                    cv2.putText(vis, text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), 2)
+            
             cv2.imshow("VSL Inference", vis)
             key = cv2.waitKey(1) & 0xFF
             if key == 27 or key == ord('q'):
